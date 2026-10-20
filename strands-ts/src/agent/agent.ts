@@ -1840,6 +1840,11 @@ export class Agent implements LocalAgent, InvokableAgent {
             continue
           }
 
+          // Read before appending: MessageAdded hooks (e.g. result offloading) may rewrite the tool result in place.
+          const structuredOutput = structuredOutputTool
+            ? this._extractStructuredOutput(assistantMessage, toolResultMessage)
+            : undefined
+
           /**
            * Deferred append: both messages are added AFTER tool execution completes.
            * This keeps agent.messages in a valid, reinvokable state at all times.
@@ -1885,9 +1890,6 @@ export class Agent implements LocalAgent, InvokableAgent {
           }
 
           // Structured output captured: exit
-          const structuredOutput = structuredOutputTool
-            ? this._extractStructuredOutput(assistantMessage, toolResultMessage)
-            : undefined
           if (structuredOutput !== undefined) {
             result = new AgentResult({
               stopReason: 'toolUse',

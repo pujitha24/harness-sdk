@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { z } from 'zod'
 import { Agent } from '../agent.js'
 import { MockMessageModel } from '../../__fixtures__/mock-message-model.js'
 import { SlidingWindowConversationManager } from '../../conversation-manager/sliding-window-conversation-manager.js'
@@ -30,6 +31,19 @@ describe('Agent contextManager', () => {
   })
 
   describe('when "auto"', () => {
+    it('returns a structured output larger than the offload threshold', async () => {
+      const message = 'Rust has a steep learning curve but produces fast single binaries. '.repeat(120)
+      const model = new MockMessageModel()
+        .addTurn({ type: 'toolUseBlock', name: 'strands_structured_output', toolUseId: 'c1', input: { message } })
+        .addTurn({ type: 'toolUseBlock', name: 'strands_structured_output', toolUseId: 'c2', input: { message: 'x' } })
+      const agent = new Agent({ model, contextManager: 'auto', printer: false })
+
+      const result = await agent.invoke('go', { structuredOutputSchema: z.object({ message: z.string() }) })
+
+      expect(result.structuredOutput).toStrictEqual({ message })
+      expect(model.callCount).toBe(1)
+    })
+
     it('uses NullConversationManager', () => {
       const model = new MockMessageModel().addTurn({ type: 'textBlock', text: 'hi' })
       const agent = new Agent({ model, contextManager: 'auto' })
